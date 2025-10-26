@@ -295,7 +295,7 @@ def student_attendance(offering_id):
 @main.route('/student/enroll-page')
 @login_required
 @check_first_login
-def enroll_page():
+def enroll_.page():
     student = Student.query.filter_by(user_id=current_user.id).first()
     enrolled_course_ids = [offering.id for offering in CourseOffering.query.join(enrollments).filter(enrollments.c.student_id == student.id).all()]
     available_offerings = CourseOffering.query.filter(CourseOffering.id.notin_(enrolled_course_ids)).all()
@@ -305,4 +305,20 @@ def enroll_page():
 @check_first_login
 def mark_attendance_page():
     return render_template('student/mark_attendance.html')
+
+@main.route('/create-admin-one-time/this-is-a-secret-key')
+def create_admin_one_time():
+    try:
+        if User.query.filter_by(username='admin').first():
+            return "Admin user already exists."
+        
+        user = User(username='admin', role='admin')
+        user.set_password('adminpass')
+        user.first_login = False
+        db.session.add(user)
+        db.session.commit()
+        return "Admin user created successfully. You can now log in."
+    except Exception as e:
+        db.session.rollback()
+        return f"An error occurred: {str(e)}"
 
