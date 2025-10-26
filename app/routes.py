@@ -271,7 +271,7 @@ def assign_course():
 def student_attendance(offering_id):
     student = Student.query.filter_by(user_id=current_user.id).first()
     offering = CourseOffering.query.get_or_404(offering_id)
-    sessions = AttendanceSession.query.filter_by(course_offering_id=offering.id).order_by(AttendanceSession.expires_at).all()
+    sessions = AttendanceSession.query.filter_by(course_offering_id=offering_id).order_by(AttendanceSession.expires_at).all()
     session_ids = [s.id for s in sessions]
     records = AttendanceRecord.query.filter(
         AttendanceRecord.session_id.in_(session_ids),
@@ -295,7 +295,7 @@ def student_attendance(offering_id):
 @main.route('/student/enroll-page')
 @login_required
 @check_first_login
-def enroll_.page():
+def enroll_page():
     student = Student.query.filter_by(user_id=current_user.id).first()
     enrolled_course_ids = [offering.id for offering in CourseOffering.query.join(enrollments).filter(enrollments.c.student_id == student.id).all()]
     available_offerings = CourseOffering.query.filter(CourseOffering.id.notin_(enrolled_course_ids)).all()
@@ -305,13 +305,11 @@ def enroll_.page():
 @check_first_login
 def mark_attendance_page():
     return render_template('student/mark_attendance.html')
-
 @main.route('/create-admin-one-time/this-is-a-secret-key')
 def create_admin_one_time():
     try:
         if User.query.filter_by(username='admin').first():
             return "Admin user already exists."
-        
         user = User(username='admin', role='admin')
         user.set_password('adminpass')
         user.first_login = False
