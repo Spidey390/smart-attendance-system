@@ -7,7 +7,8 @@ def load_user(user_id):
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    # FIX: Increased length from 128 to 256
+    password_hash = db.Column(db.String(256))
     role = db.Column(db.String(50), nullable=False) # 'admin', 'staff', 'student'
     first_login = db.Column(db.Boolean, default=True)
     def set_password(self, password):
@@ -26,6 +27,11 @@ class Course(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     course_code = db.Column(db.String(20), unique=True, nullable=False)
     course_name = db.Column(db.String(100), nullable=False)
+# Many-to-Many table for Student Enrollment
+enrollments = db.Table('enrollments',
+    db.Column('student_id', db.Integer, db.ForeignKey('student.id'), primary_key=True),
+    db.Column('course_offering_id', db.Integer, db.ForeignKey('course_offering.id'), primary_key=True)
+)
 class CourseOffering(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'))
@@ -34,10 +40,9 @@ class CourseOffering(db.Model):
     filled_seats = db.Column(db.Integer, default=0)
     course = db.relationship('Course', backref='offerings')
     staff = db.relationship('Staff', backref='offerings')
-enrollments = db.Table('enrollments',
-    db.Column('student_id', db.Integer, db.ForeignKey('student.id'), primary_key=True),
-    db.Column('course_offering_id', db.Integer, db.ForeignKey('course_offering.id'), primary_key=True)
-)
+    # Relationship to the enrollments table
+    enrolled_students = db.relationship('Student', secondary=enrollments,
+                                      backref=db.backref('enrolled_courses', lazy='dynamic'), lazy='dynamic')
 class AttendanceSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     course_offering_id = db.Column(db.Integer, db.ForeignKey('course_offering.id'))
