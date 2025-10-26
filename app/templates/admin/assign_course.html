@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Assign Course to Staff</h2>
+<p>Create a "Course Offering" by linking a course to a staff member for students to enroll in.</p>
+<div class="card p-4">
+    <form method="POST" action="{{ url_for('main.assign_course') }}">
+        <div class="mb-3">
+            <label for="course_id" class="form-label">Select Course</label>
+            <select class="form-select" id="course_id" name="course_id" required>
+                <option value="" disabled selected>-- Choose a course --</option>
+                {% for course in courses %}
+                <option value="{{ course.id }}">{{ course.course_code }} - {{ course.course_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="staff_id" class="form-label">Assign to Staff Member</label>
+            <select class="form-select" id="staff_id" name="staff_id" required>
+                <option value="" disabled selected>-- Choose a staff member --</option>
+                {% for staff in staff_members %}
+                <option value="{{ staff.id }}">{{ staff.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="max_seats" class="form-label">Maximum Seats (FCFS)</label>
+            <input type="number" class="form-control" id="max_seats" name="max_seats" value="50" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Offering</button>
+    </form>
+</div>
+{% endblock %}

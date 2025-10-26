@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Overall Attendance Reports</h2>
+<p>Select a course to view its detailed attendance report.</p>
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Course Code</th>
+            <th>Course Name</th>
+            <th>Staff</th>
+            <th>Enrolled / Max</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for offering in offerings %}
+        <tr>
+            <td>{{ offering.course.course_code }}</td>
+            <td>{{ offering.course.course_name }}</td>
+            <td>{{ offering.staff.name }}</td>
+            <td>{{ offering.filled_seats }} / {{ offering.max_seats }}</td>
+            <td>
+                <a href="{{ url_for('main.staff_report', offering_id=offering.id) }}" class="btn btn-primary btn-sm">View Report</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" class="text-center">No courses have been configured yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Staff Dashboard</h2>
+<h4>Your Courses</h4>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Course Code</th>
+            <th>Course Name</th>
+            <th colspan="2">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for offering in staff_offerings %}
+        <tr>
+            <td>{{ offering.course.course_code }}</td>
+            <td>{{ offering.course.course_name }}</td>
+            <td>
+                <a href="{{ url_for('main.start_attendance_session', offering_id=offering.id) }}" class="btn btn-success">Start Attendance</a>
+            </td>
+            <td>
+                <a href="{{ url_for('main.staff_report', offering_id=offering.id) }}" class="btn btn-info">View Report</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4" class="text-center">You have not been assigned to any courses yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

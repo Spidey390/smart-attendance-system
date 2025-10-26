@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Mark Attendance</h2>
+<p>Enter the 6-digit code provided by your instructor to mark your attendance for the current session.</p>
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <form action="{{ url_for('main.mark_attendance') }}" method="POST">
+                <div class="mb-3">
+                    <label for="attendance_code" class="form-label">Enter Attendance Code</label>
+                    <input type="text" class="form-control text-center" id="attendance_code" name="attendance_code" required maxlength="6" style="font-size: 1.5rem; letter-spacing: 0.5rem;">
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

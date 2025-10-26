@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Enroll in a Course (FCFS)</h2>
+<p>Select a course from the list below. Enrollment is based on a first-come, first-served basis.</p>
+<div class="card p-4">
+    <form action="{{ url_for('main.enroll_course') }}" method="POST">
+        <div class="mb-3">
+           <label for="offering_id" class="form-label">Select Course</label>
+           <select class="form-select" name="offering_id" id="offering_id" required>
+               <option value="" disabled selected>-- Choose an available course --</option>
+               {% for offering in available_offerings %}
+               <option value="{{ offering.id }}" {% if offering.filled_seats >= offering.max_seats %}disabled{% endif %}>
+                   {{ offering.course.course_code }}: {{ offering.course.course_name }} - {{ offering.staff.name }} (Seats: {{ offering.filled_seats }}/{{ offering.max_seats }})
+               </option>
+               {% endfor %}
+               {% if not available_offerings %}
+               <option value="" disabled>No courses are available for enrollment at this time.</option>
+               {% endif %}
+           </select>
+        </div>
+       <button type="submit" class="btn btn-success" {% if not available_offerings %}disabled{% endif %}>Enroll Now</button>
+   </form>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>My Attendance</h2>
+<h4>{{ offering.course.course_code }} - {{ offering.course.course_name }}</h4>
+<p>Handled by: {{ offering.staff.name }}</p>
+<div class="card my-4">
+    <div class="card-header">
+        <h4>Summary</h4>
+    </div>
+    <div class="card-body">
+        <p><strong>Total Classes Attended:</strong> {{ report.attended }}</p>
+        <p><strong>Total Classes Held:</strong> {{ report.total }}</p>
+        <div class="progress">
+            <div class="progress-bar" role="progressbar" style="width: {{ report.percentage }}%;" aria-valuenow="{{ report.percentage }}" aria-valuemin="0" aria-valuemax="100">{{ report.percentage }}%</div>
+        </div>
+    </div>
+</div>
+<h4>Detailed Report</h4>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in report.details %}
+        <tr>
+            <td>{{ record.date.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td class="{{ 'text-success' if record.status == 'Present' else 'text-danger' }}">
+                <strong>{{ record.status }}</strong>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,29 @@
+<hr>
+<h4>My Enrolled Courses</h4>
+<table class="table mt-3">
+    <thead>
+        <tr>
+            <th>Course Code</th>
+            <th>Course Name</th>
+            <th>Staff</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for offering in enrolled_courses %}
+        <tr>
+            <td>{{ offering.course.course_code }}</td>
+            <td>{{ offering.course.course_name }}</td>
+            <td>{{ offering.staff.name }}</td>
+            <td>
+                <a href="{{ url_for('main.student_attendance', offering_id=offering.id) }}"
+                    class="btn btn-primary btn-sm">View Attendance</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4" class="text-center">You have not enrolled in any courses yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
