@@ -66,7 +66,7 @@ def add_users_from_excel():
     file = request.files['excel_file']
     role = request.form.get('role')
     file.save('upload.xlsx')
-    process_excel('upload.xlsx', role, 'default123')
+    process_excel('upload.xlsx', role, 'default1J23')
     flash(f'{role.capitalize()}s added successfully!')
     return redirect(url_for('main.admin_dashboard'))
 @main.route('/staff/dashboard')
@@ -271,7 +271,7 @@ def assign_course():
 def student_attendance(offering_id):
     student = Student.query.filter_by(user_id=current_user.id).first()
     offering = CourseOffering.query.get_or_404(offering_id)
-    sessions = AttendanceSession.query.filter_by(course_offering_id=offering_id).order_by(AttendanceSession.expires_at).all()
+    sessions = AttendanceSession.query.filter_by(course_offering_id=offering.id).order_by(AttendanceSession.expires_at).all()
     session_ids = [s.id for s in sessions]
     records = AttendanceRecord.query.filter(
         AttendanceRecord.session_id.in_(session_ids),
