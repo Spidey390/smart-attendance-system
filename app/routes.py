@@ -2,19 +2,27 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import User, Student, Staff, Course, CourseOffering, AttendanceSession, AttendanceRecord, enrollments
-from app.utils import admin_required, check_first_login, process_excel
-from werkzeug.security import generate_password_hash, check_password_hash
+from app.utils import admin_required, check_first_login, process_excel, process_course_excel
+from werkzeug.security import check_password_hash
 import random
 import string
 from datetime import datetime, timedelta
 import io
 import pandas as pd
+import os
 main = Blueprint('main', __name__)
 @main.route('/')
 def index():
     return redirect(url_for('main.login'))
 @main.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_user.is_authenticated:
+        if current_user.role == 'admin':
+            return redirect(url_for('main.admin_dashboard'))
+        elif current_user.role == 'staff':
+            return redirect(url_for('main.staff_dashboard'))
+        else:
+            return redirect(url_for('main.student_dashboard'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -30,7 +38,7 @@ def login():
             else:
                 return redirect(url_for('main.student_dashboard'))
         else:
-            flash('Invalid username or password')
+            flash('Invalid username or password', 'danger')
     return render_template('login.html')
 @main.route('/logout')
 @login_required
@@ -42,10 +50,13 @@ def logout():
 def change_password():
     if request.method == 'POST':
         new_password = request.form.get('new_password')
+        if not new_password or len(new_password) < 6:
+            flash('Password must be at least 6 characters long.', 'danger')
+            return render_template('change_password.html')
         current_user.set_password(new_password)
         current_user.first_login = False
         db.session.commit()
-        flash('Password updated successfully!')
+        flash('Password updated successfully!', 'success')
         if current_user.role == 'admin':
             return redirect(url_for('main.admin_dashboard'))
         elif current_user.role == 'staff':
@@ -63,17 +74,32 @@ def admin_dashboard():
 @login_required
 @admin_required
 def add_users_from_excel():
+    if 'excel_file' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('main.admin_dashboard'))
     file = request.files['excel_file']
-    role = request.form.get('role')
-    file.save('upload.xlsx')
-    process_excel('upload.xlsx', role, 'default123')
-    flash(f'{role.capitalize()}s added successfully!')
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('main.admin_dashboard'))
+    if file:
+        filepath = os.path.join('instance', file.filename)
+        file.save(filepath)
+        role = request.form.get('role')
+        success, message = process_excel(filepath, role, 'default123')
+        if success:
+            flash(message, 'success')
+        else:
+            flash(message, 'danger')
+        os.remove(filepath)
     return redirect(url_for('main.admin_dashboard'))
 @main.route('/staff/dashboard')
 @login_required
 @check_first_login
 def staff_dashboard():
     staff_profile = Staff.query.filter_by(user_id=current_user.id).first()
+    if not staff_profile:
+        flash('Staff profile not found.', 'danger')
+        return redirect(url_for('main.logout'))
     staff_offerings = CourseOffering.query.filter_by(staff_id=staff_profile.id).all()
     return render_template('staff/dashboard.html', staff_offerings=staff_offerings)
 @main.route('/staff/start-session/<int:offering_id>')
@@ -85,12 +111,15 @@ def start_attendance_session(offering_id):
     new_session = AttendanceSession(course_offering_id=offering_id, session_code=code, expires_at=expiry_time)
     db.session.add(new_session)
     db.session.commit()
-    return render_template('staff/attendance_session.html', code=code, expiry=expiry_time)
+    return render_template('staff/attendance_session.html', code=code, expiry=expiry_time.isoformat())
 @main.route('/student/dashboard')
 @login_required
 @check_first_login
 def student_dashboard():
     student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('main.logout'))
     enrolled_courses = CourseOffering.query.join(enrollments).filter(enrollments.c.student_id == student.id).all()
     return render_template('student/dashboard.html', enrolled_courses=enrolled_courses)
 @main.route('/student/enroll', methods=['POST'])
@@ -100,13 +129,13 @@ def enroll_course():
     offering_id = request.form.get('offering_id')
     offering = CourseOffering.query.get(offering_id)
     student = Student.query.filter_by(user_id=current_user.id).first()
-    if offering and offering.filled_seats < offering.max_seats:
-        offering.filled_seats += 1
+    if offering and student and offering.filled_seats < offering.max_seats:
         student.enrolled_courses.append(offering)
+        offering.filled_seats += 1
         db.session.commit()
-        flash('Enrolled successfully!')
+        flash('Enrolled successfully!', 'success')
     else:
-        flash('Course is full or does not exist.')
+        flash('Course is full, does not exist, or student profile not found.', 'danger')
     return redirect(url_for('main.student_dashboard'))
 @main.route('/student/mark-attendance', methods=['POST'])
 @login_required
@@ -115,6 +144,9 @@ def mark_attendance():
     code = request.form.get('attendance_code')
     session = AttendanceSession.query.filter_by(session_code=code).first()
     student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('main.logout'))
     if not session or session.expires_at < datetime.utcnow():
         flash('Invalid or expired code.', 'danger')
         return redirect(url_for('main.mark_attendance_page'))
@@ -173,7 +205,7 @@ def download_report(offering_id):
     data_for_df = []
     for student in enrolled_students:
         user = User.query.get(student.user_id)
-        row = {'Student Name': student.name, 'Username': user.username}
+        row = {'Student Name': student.name, 'Username': user.username if user else 'N/A'}
         attended_count = 0
         for session in sessions:
             session_date = session.expires_at.strftime('%Y-%m-%d %H:%M')
@@ -213,9 +245,12 @@ def add_user():
         name = request.form.get('name')
         username = request.form.get('username')
         role = request.form.get('role')
+        if not name or not username or not role:
+            flash('All fields are required.', 'danger')
+            return render_template('admin/add_user.html')
         if User.query.filter_by(username=username).first():
             flash('Username already exists.', 'danger')
-            return redirect(url_for('main.add_user'))
+            return render_template('admin/add_user.html')
         new_user = User(username=username, role=role)
         new_user.set_password('default123')
         db.session.add(new_user)
@@ -236,6 +271,9 @@ def add_course():
     if request.method == 'POST':
         code = request.form.get('course_code')
         name = request.form.get('course_name')
+        if not code or not name:
+            flash('All fields are required.', 'danger')
+            return render_template('admin/add_course.html')
         if Course.query.filter_by(course_code=code).first():
             flash('A course with this code already exists.', 'danger')
         else:
@@ -245,6 +283,27 @@ def add_course():
             flash(f'Course "{name}" added successfully!', 'success')
         return redirect(url_for('main.admin_dashboard'))
     return render_template('admin/add_course.html')
+@main.route('/admin/add_courses_excel', methods=['POST'])
+@login_required
+@admin_required
+def add_courses_excel():
+    if 'excel_file' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('main.add_course'))
+    file = request.files['excel_file']
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('main.add_course'))
+    if file:
+        filepath = os.path.join('instance', file.filename)
+        file.save(filepath)
+        success, message = process_course_excel(filepath)
+        if success:
+            flash(message, 'success')
+        else:
+            flash(message, 'danger')
+        os.remove(filepath)
+    return redirect(url_for('main.add_course'))
 @main.route('/admin/assign-course', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -271,6 +330,9 @@ def assign_course():
 def student_attendance(offering_id):
     student = Student.query.filter_by(user_id=current_user.id).first()
     offering = CourseOffering.query.get_or_404(offering_id)
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('main.logout'))
     sessions = AttendanceSession.query.filter_by(course_offering_id=offering.id).order_by(AttendanceSession.expires_at).all()
     session_ids = [s.id for s in sessions]
     records = AttendanceRecord.query.filter(
@@ -297,8 +359,14 @@ def student_attendance(offering_id):
 @check_first_login
 def enroll_page():
     student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('main.logout'))
     enrolled_course_ids = [offering.id for offering in CourseOffering.query.join(enrollments).filter(enrollments.c.student_id == student.id).all()]
-    available_offerings = CourseOffering.query.filter(CourseOffering.id.notin_(enrolled_course_ids)).all()
+    available_offerings = CourseOffering.query.filter(
+        CourseOffering.id.notin_(enrolled_course_ids),
+        CourseOffering.filled_seats < CourseOffering.max_seats
+    ).all()
     return render_template('student/enroll.html', available_offerings=available_offerings)
 @main.route('/student/mark-attendance-page')
 @login_required
@@ -308,30 +376,23 @@ def mark_attendance_page():
 @main.route('/admin/view-courses')
 @login_required
 @admin_required
-def admin_view_courses():
+def view_courses():
     courses = Course.query.all()
     return render_template('admin/view_courses.html', courses=courses)
 @main.route('/create-admin-one-time/this-is-a-secret-key')
 def create_admin_one_time():
-    try:
-        if User.query.filter_by(username='admin').first():
-            return 'Admin user already exists.'
-        admin_user = User(username='admin', role='admin')
-        admin_user.set_password('adminpass')
-        admin_user.first_login = False
-        db.session.add(admin_user)
-        db.session.commit()
-        return 'Admin user created successfully.'
-    except Exception as e:
-        db.session.rollback()
-        return f'An error occurred: {str(e)}'
+    if User.query.filter_by(username='admin').first():
+        return "Admin user already exists."
+    user = User(username='admin', role='admin')
+    user.set_password('adminpass')
+    user.first_login = False
+    db.session.add(user)
+    db.session.commit()
+    return "Admin user created successfully. You can now log in. Please remove this route from app/routes.py for security."
 @main.route('/debug-view')
 @login_required
 @admin_required
 def debug_view():
     staff = Staff.query.all()
     courses = Course.query.all()
-    staff_list = [s.name for s in staff]
-    course_list = [c.course_name for c in courses]
-    return f"<h1>Debug Info</h1><h2>Staff:</h2><p>{staff_list}</p><h2>Courses:</h2><p>{course_list}</p>"
-
+    return f"<h1>Debug Info</h1><h2>Staff:</h2><p>{[member.name for member in staff]}</p><h2>Courses:</h2><p>{[course.course_name for course in courses]}</p>"
