@@ -1,1 +1,39 @@
- 
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-md-6 text-center">
+<h2>Attendance Session Started</h2>
+<p>Please share this code with your students. It is valid for 5 minutes.</p>
+<div class="card p-4 my-4">
+<h3 class="display-4" style="letter-spacing: 0.5rem; font-weight: bold;">
+{{ code }}
+</h3>
+</div>
+<div class="alert alert-info">
+<h5 id="countdown">Time remaining: 5:00</h5>
+</div>
+<a href="{{ url_for('main.staff_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+</div>
+<script>
+// Simple countdown timer
+let timeLeft = 300; // 5 minutes in seconds
+const countdownElement = document.getElementById('countdown');
+function updateTimer() {
+const minutes = Math.floor(timeLeft / 60);
+let seconds = timeLeft % 60;
+seconds = seconds < 10 ? '0' + seconds : seconds;
+countdownElement.textContent = `Time remaining: ${minutes}:${seconds}`;
+if (timeLeft > 0) {
+timeLeft--;
+setTimeout(updateTimer, 1000);
+} else {
+countdownElement.textContent = "Code Expired";
+countdownElement.classList.remove('alert-info');
+countdownElement.classList.add('alert-danger');
+}
+}
+// Start the timer when the page loads
+document.addEventListener('DOMContentLoaded', updateTimer);
+</script>
+{% endblock %}

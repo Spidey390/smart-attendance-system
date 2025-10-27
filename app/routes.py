@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import User, Student, Staff, Course, CourseOffering, AttendanceSession, AttendanceRecord, enrollments
 from app.utils import admin_required, check_first_login, process_excel
-from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 import random
 import string
 from datetime import datetime, timedelta
@@ -66,7 +66,7 @@ def add_users_from_excel():
     file = request.files['excel_file']
     role = request.form.get('role')
     file.save('upload.xlsx')
-    process_excel('upload.xlsx', role, 'default1J23')
+    process_excel('upload.xlsx', role, 'default123')
     flash(f'{role.capitalize()}s added successfully!')
     return redirect(url_for('main.admin_dashboard'))
 @main.route('/staff/dashboard')
@@ -271,7 +271,7 @@ def assign_course():
 def student_attendance(offering_id):
     student = Student.query.filter_by(user_id=current_user.id).first()
     offering = CourseOffering.query.get_or_404(offering_id)
-    sessions = AttendanceSession.query.filter_by(course_offering_id=offering_id).order_by(AttendanceSession.expires_at).all()
+    sessions = AttendanceSession.query.filter_by(course_offering_id=offering.id).order_by(AttendanceSession.expires_at).all()
     session_ids = [s.id for s in sessions]
     records = AttendanceRecord.query.filter(
         AttendanceRecord.session_id.in_(session_ids),
@@ -305,18 +305,33 @@ def enroll_page():
 @check_first_login
 def mark_attendance_page():
     return render_template('student/mark_attendance.html')
+@main.route('/admin/view-courses')
+@login_required
+@admin_required
+def admin_view_courses():
+    courses = Course.query.all()
+    return render_template('admin/view_courses.html', courses=courses)
 @main.route('/create-admin-one-time/this-is-a-secret-key')
 def create_admin_one_time():
     try:
         if User.query.filter_by(username='admin').first():
-            return "Admin user already exists."
-        user = User(username='admin', role='admin')
-        user.set_password('adminpass')
-        user.first_login = False
-        db.session.add(user)
+            return 'Admin user already exists.'
+        admin_user = User(username='admin', role='admin')
+        admin_user.set_password('adminpass')
+        admin_user.first_login = False
+        db.session.add(admin_user)
         db.session.commit()
-        return "Admin user created successfully. You can now log in."
+        return 'Admin user created successfully.'
     except Exception as e:
         db.session.rollback()
-        return f"An error occurred: {str(e)}"
+        return f'An error occurred: {str(e)}'
+@main.route('/debug-view')
+@login_required
+@admin_required
+def debug_view():
+    staff = Staff.query.all()
+    courses = Course.query.all()
+    staff_list = [s.name for s in staff]
+    course_list = [c.course_name for c in courses]
+    return f"<h1>Debug Info</h1><h2>Staff:</h2><p>{staff_list}</p><h2>Courses:</h2><p>{course_list}</p>"
 

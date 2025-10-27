@@ -1,29 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Student Dashboard</h2>
 <hr>
+<!-- These are the missing buttons -->
+<div class="d-flex gap-3 mb-4">
+<a href="{{ url_for('main.mark_attendance_page') }}" class="btn btn-primary">Mark Attendance</a>
+<a href="{{ url_for('main.enroll_page') }}" class="btn btn-success">Enroll in a New Course</a>
+</div>
+<!-- This is the table you already have -->
 <h4>My Enrolled Courses</h4>
-<table class="table mt-3">
-    <thead>
-        <tr>
-            <th>Course Code</th>
-            <th>Course Name</th>
-            <th>Staff</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for offering in enrolled_courses %}
-        <tr>
-            <td>{{ offering.course.course_code }}</td>
-            <td>{{ offering.course.course_name }}</td>
-            <td>{{ offering.staff.name }}</td>
-            <td>
-                <a href="{{ url_for('main.student_attendance', offering_id=offering.id) }}"
-                    class="btn btn-primary btn-sm">View Attendance</a>
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="4" class="text-center">You have not enrolled in any courses yet.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+<table class="table table-hover mt-3">
+<thead>
+<tr>
+<th>Course Code</th>
+<th>Course Name</th>
+<th>Staff</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+{% for offering in enrolled_courses %}
+<tr>
+<td>{{ offering.course.course_code }}</td>
+<td>{{ offering.course.course_name }}</td>
+<td>{{ offering.staff.name }}</td>
+<td>
+<a href="{{ url_for('main.student_attendance', offering_id=offering.id) }}" class="btn btn-primary btn-sm">View Attendance</a>
+</td>
+</tr>
+{% else %}
+<tr>
+<td colspan="4" class="text-center">You have not enrolled in any courses yet.</td>
+</tr>
+{% endfor %}
+</tbody>
 </table>
+{% endblock %}
